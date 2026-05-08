@@ -3,14 +3,16 @@
 #include <cstdint>
 #include <cstring>
 #include <array>
+#ifdef _MSC_VER
 #include <intrin.h>
+#endif
 #include <stdlib.h>
 
+#include "../utils/compiler.hpp"
+
 #if defined(_MSC_VER)
-#define FORCE_INLINE __forceinline
 #define LIKELY(x) (x)
 #else
-#define FORCE_INLINE __attribute__((always_inline)) inline
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #endif
 
@@ -137,8 +139,6 @@ FORCE_INLINE void parse_stock_directory(const uint8_t* data, Order& order) {
 
 using ParserFn = void(*)(const uint8_t*, Order&);
 
-#include "utils/compiler.hpp"
-
 class ITCHParser {
 private:
     static ParserFn table[256];
@@ -175,7 +175,10 @@ public:
     FORCE_INLINE static bool parse(const uint8_t* data, Order& order) {
         uint8_t type = data[0];
         
-        // System and Directory messages always pass
+        // System, Directory, and Trading Action messages always pass
+        // Others have locate at offset 1. 'T' (Time) does not.
+        if (type == 'T') return false; 
+
         if (type != 'S' && type != 'R' && type != 'H') [[unlikely]] {
              uint16_t locate = read_be16(&data[1]);
              if (!interest_mask_[locate]) [[likely]] return false;

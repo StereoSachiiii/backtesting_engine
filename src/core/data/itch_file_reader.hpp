@@ -57,6 +57,39 @@ public:
 		}
 	}
 
+	size_t get_size() {
+		if (!file_) return 0;
+		long long current = 
+#ifdef _MSC_VER
+			_ftelli64(file_);
+#else
+			ftello(file_);
+#endif
+		fseek(file_, 0, SEEK_END);
+		long long size = 
+#ifdef _MSC_VER
+			_ftelli64(file_);
+#else
+			ftello(file_);
+#endif
+		
+#ifdef _MSC_VER
+			_fseeki64(file_, current, SEEK_SET);
+#else
+			fseeko(file_, current, SEEK_SET);
+#endif
+		return (size_t)size;
+	}
+
+	size_t get_offset() {
+		if (!file_) return 0;
+#ifdef _MSC_VER
+		return (size_t)_ftelli64(file_);
+#else
+		return (size_t)ftello(file_);
+#endif
+	}
+
 private:
 	static size_t get_raw_msg_len(uint8_t type) {
 		switch (type) {

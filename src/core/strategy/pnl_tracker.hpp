@@ -9,7 +9,10 @@ public:
     static PnLSummary calculate_pnl(const PositionManager& pos_mgr, const OrderBookManager& book_mgr) {
         PnLSummary summary;
         
-        for (const auto& [locate, pos] : pos_mgr.all_positions()) {
+        for (const auto& entry : pos_mgr.get_all_active_positions()) {
+            uint16_t locate = entry.locate;
+            const Position& pos = entry.pos;
+            
             summary.realized += pos.realized_pnl;
 
             // Calculate  Mid-Price

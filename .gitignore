@@ -1,4 +1,3 @@
-
 # Build directories
 build/
 out/
@@ -33,3 +32,4 @@ Thumbs.db
 
 build/
 .vscode/
+*.NASDAQ_ITCH50

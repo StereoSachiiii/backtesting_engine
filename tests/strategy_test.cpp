@@ -25,8 +25,8 @@ void test_pnl_calculation() {
     // 3. Mark to Market (Mid price = 160.00)
     // We need to simulate the book state
     OrderBook* book = book_mgr.get_or_create_book(locate, 'P');
-    book->apply_add(1, 'B', 1590000, 100, locate); // Bid 159.00 (scaled by 10000 in ITCH usually)
-    book->apply_add(2, 'S', 1610000, 100, locate); // Ask 161.00
+    book->apply_add(1, 'B', 1590000, 100, locate, 0); // Bid 159.00 (scaled by 10000 in ITCH usually)
+    book->apply_add(2, 'S', 1610000, 100, locate, 0); // Ask 161.00
     // Note: Our calculation uses raw values. Let's adjust book prices for simplicity in test
     
     PnLSummary summary = PnLTracker::calculate_pnl(pos_mgr, book_mgr);

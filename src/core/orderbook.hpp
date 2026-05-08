@@ -28,14 +28,14 @@ private:
     char market_category_ = ' ';
     uint32_t order_count_ = 0;
 
-    uint64_t last_bid_price_ = 0;
-    uint32_t last_bid_qty_ = 0;
-    uint64_t last_ask_price_ = 0;
-    uint32_t last_ask_qty_ = 0;
+    uint64_t last_prices_[2][5] = {{0}};
+    uint32_t last_qtys_[2][5] = {{0}};
+    double last_valid_mid_ = 0.0;
+    
     int64_t ofi_accumulator_ = 0;
     double ofi_ema_ = 0.0;
-    double ofi_ema_mean_ = 0.0;  // exponential rolling mean for z-score
-    double ofi_ema_var_ = 0.0;   // exponential rolling variance for z-score
+    double ofi_ema_mean_ = 0.0;
+    double ofi_ema_var_ = 0.0;
     uint64_t total_volume_ = 0;
     uint64_t last_update_ns_ = 0;
     uint64_t out_of_window_drops_ = 0;
@@ -47,6 +47,7 @@ public:
     {
         memory_ = static_cast<OrderBookMemory*>(alloc_zeroed_aligned(sizeof(OrderBookMemory)));
         if (memory_) {
+            memset(memory_, 0, sizeof(OrderBookMemory));
             new (&memory_->bits[0]) HierarchicalBitset(); //b
             new (&memory_->bits[1]) HierarchicalBitset(); //s      
         }
@@ -71,6 +72,7 @@ public:
     *@param ts_ns: order timestamp ns
     */
     FORCE_INLINE void apply_add(uint64_t ref, uint8_t side, uint64_t price, uint32_t qty, uint16_t locate, uint64_t ts_ns) {
+        if (!memory_) [[unlikely]] return;
         last_update_ns_ = ts_ns;
         if (order_count_ == 0) [[unlikely]] base_price_ = price - (PRICE_WINDOW / 2);
 
@@ -78,8 +80,10 @@ public:
             out_of_window_drops_++;
             return;
         }
-    
+
         Order* o = order_pool_.allocate();
+        if (!o) return;
+        
         o->order_ref = ref;
         o->side = side;
         o->price = price;
@@ -92,14 +96,15 @@ public:
 
 
 
+        uint32_t s = (side & 1);
         size_t idx = (size_t)(price - base_price_);
-        uint32_t s = (side & 1); // 0 for 'B', 1 for 'A'/'S'
         
         if (idx >= PRICE_WINDOW) [[unlikely]] return;
 
         PriceLevel* lvl = memory_->price_levels[s][idx];
         if (!lvl) [[unlikely]] {
             lvl = level_pool_.allocate();
+            if (!lvl) return;
             lvl->price = price;
             lvl->total_qty = qty;
             lvl->head = lvl->tail = o;
@@ -107,11 +112,17 @@ public:
             memory_->price_levels[s][idx] = lvl;
             memory_->bits[s].set(idx);
         } else {
-            lvl->tail->next = o;
-            o->prev = lvl->tail;
-            lvl->tail = o;
-            lvl->total_qty += qty;
-            lvl->order_count++;
+            if (!lvl->tail) [[unlikely]] { // Recovery path
+                lvl->head = lvl->tail = o;
+                lvl->order_count = 1;
+                lvl->total_qty = qty;
+            } else {
+                lvl->tail->next = o;
+                o->prev = lvl->tail;
+                lvl->tail = o;
+                lvl->total_qty += qty;
+                lvl->order_count++;
+            }
         }
         // add to the hashmap index for fast lookup , i use a custom hash , not  std::map or std::unordered_map 
         index_insert_impl(ref, o);
@@ -134,14 +145,31 @@ public:
         
         uint32_t s = (o->side & 1);
         size_t idx = (size_t)(o->price - base_price_);
+        if (idx >= PRICE_WINDOW) [[unlikely]] {
+            index_erase_impl(ref);
+            order_pool_.deallocate(o);
+            if (order_count_ > 0) order_count_--;
+            return;
+        }
+
         PriceLevel* lvl = memory_->price_levels[s][idx]; 
+        if (!lvl) [[unlikely]] {
+            index_erase_impl(ref);
+            order_pool_.deallocate(o);
+            if (order_count_ > 0) order_count_--;
+            return;
+        }
 
         if (o->prev) o->prev->next = o->next; 
         else         lvl->head = o->next;    
         if (o->next) o->next->prev = o->prev; 
         else         lvl->tail = o->prev;    
 
-        lvl->total_qty -= o->shares;
+        if (lvl->total_qty >= o->shares) {
+            lvl->total_qty -= o->shares;
+        } else {
+            lvl->total_qty = 0;
+        }
         if (--lvl->order_count == 0) {
             memory_->bits[s].reset(idx);
             memory_->price_levels[s][idx] = nullptr;
@@ -171,10 +199,19 @@ public:
 
         if (qty >= o->shares)[[likely]] {
             apply_delete(ref, ts_ns);
-        } else {//what if it gets partially filled
+        } else {
             o->shares -= qty;
             size_t idx = (size_t)(o->price - base_price_);
-            memory_->price_levels[o->side & 1][idx]->total_qty -= qty;
+            if (idx < PRICE_WINDOW) {
+                PriceLevel* lvl = memory_->price_levels[o->side & 1][idx];
+                if (lvl) {
+                    if (lvl->total_qty >= qty) {
+                        lvl->total_qty -= qty;
+                    } else {
+                        lvl->total_qty = 0;
+                    }
+                }
+            }
         }
         update_ofi();
     }
@@ -233,42 +270,57 @@ public:
 
     
     FORCE_INLINE void update_ofi() {
-        uint64_t current_bid = best_bid();
-        uint32_t current_bid_qty = bid_qty();
-        uint64_t current_ask = best_ask();
-        uint32_t current_ask_qty = ask_qty();
+        if (!memory_) return;
 
-        int32_t delta_bid = 0;
-        if (current_bid > last_bid_price_) {
-            delta_bid = (int32_t)current_bid_qty;
-        } else if (current_bid == last_bid_price_) {
-            delta_bid = (int32_t)current_bid_qty - (int32_t)last_bid_qty_;
-        } else {
-            delta_bid = -(int32_t)last_bid_qty_; 
+        double current_mid = mid_price();
+        if (current_mid > 0) last_valid_mid_ = current_mid;
+
+        double total_delta = 0.0;
+        
+        // Track top 5 levels for both Bid (0) and Ask (1)
+        for (int side = 0; side <= 1; ++side) {
+            int idx = (side == 0) ? memory_->bits[0].find_last() : memory_->bits[1].find_first();
+            
+            for (int level = 0; level < 5; ++level) {
+                if (idx == -1) break;
+                
+                uint64_t price = memory_->price_levels[side][idx]->price;
+                uint32_t qty = (uint32_t)memory_->price_levels[side][idx]->total_qty;
+                
+                double delta = 0;
+                if (side == 0) { // Bid
+                    if (price > last_prices_[0][level]) delta = (double)qty;
+                    else if (price == last_prices_[0][level]) delta = (double)qty - (double)last_qtys_[0][level];
+                    else delta = -(double)last_qtys_[0][level];
+                } else { // Ask
+                    if (price < last_prices_[1][level]) delta = (double)qty;
+                    else if (price == last_prices_[1][level]) delta = (double)qty - (double)last_qtys_[1][level];
+                    else delta = -(double)last_qtys_[1][level];
+                }
+
+                // Weight by 1/distance
+                total_delta += (side == 0 ? delta : -delta) / (double)(level + 1);
+
+                last_prices_[side][level] = price;
+                last_qtys_[side][level] = qty;
+                
+                idx = (side == 0) ? memory_->bits[0].find_prev(idx) : memory_->bits[1].find_next(idx);
+            }
         }
 
-        int32_t delta_ask = 0;
-        if (current_ask < last_ask_price_) {
-            delta_ask = (int32_t)current_ask_qty;
-        } else if (current_ask == last_ask_price_) {
-            delta_ask = (int32_t)current_ask_qty - (int32_t)last_ask_qty_;
-        } else {
-            delta_ask = -(int32_t)last_ask_qty_; 
-        }
-
-        ofi_accumulator_ += (int64_t)(delta_bid - delta_ask);
-
-        double raw_delta = (double)(delta_bid - delta_ask);
-        ofi_ema_ = config::OFI_ALPHA * raw_delta + (1.0 - config::OFI_ALPHA) * ofi_ema_;
+        ofi_accumulator_ += (int64_t)total_delta;
+        ofi_ema_ = config::OFI_ALPHA * total_delta + (1.0 - config::OFI_ALPHA) * ofi_ema_;
 
         double delta_from_mean = ofi_ema_ - ofi_ema_mean_;
         ofi_ema_mean_ += config::ZSCORE_ALPHA * delta_from_mean;
         ofi_ema_var_ = (1.0 - config::ZSCORE_ALPHA) * (ofi_ema_var_ + config::ZSCORE_ALPHA * delta_from_mean * delta_from_mean);
+    }
 
-        last_bid_price_ = current_bid;
-        last_bid_qty_ = current_bid_qty;
-        last_ask_price_ = current_ask;
-        last_ask_qty_ = current_ask_qty;
+    FORCE_INLINE double mid_price() const {
+        uint64_t bb = best_bid();
+        uint64_t ba = best_ask();
+        if (bb == 0 || ba == 0) return last_valid_mid_;
+        return (double(bb) + double(ba)) / 2.0;
     }
 
     FORCE_INLINE double get_ofi() const { return ofi_ema_; }
@@ -310,7 +362,7 @@ public:
         }
 
         if (b_total + a_total == 0) return 0.0;
-        return (double)(b_total - a_total) / (double)(b_total + a_total);
+        return (double(b_total) - double(a_total)) / (double(b_total) + double(a_total));
     }
 
     uint64_t get_total_volume() const { return total_volume_; }
@@ -338,12 +390,14 @@ public:
 
 private:
     FORCE_INLINE void index_insert_impl(uint64_t ref, Order* o) {
+        if (!memory_) [[unlikely]] return;
         size_t h = hash_util::murmur64(ref) & INDEX_MASK;
         while (memory_->order_index[h].ref != 0) h = (h + 1) & INDEX_MASK;
         memory_->order_index[h] = { ref, o };
     }
 
     FORCE_INLINE Order* index_find_impl(uint64_t ref) {
+        if (!memory_) [[unlikely]] return nullptr;
         size_t h = hash_util::murmur64(ref) & INDEX_MASK;
         while (memory_->order_index[h].ref != 0) {
             if (memory_->order_index[h].ref == ref) return memory_->order_index[h].order;
@@ -353,6 +407,7 @@ private:
     }
     // linear probing
     FORCE_INLINE void index_erase_impl(uint64_t ref) {
+        if (!memory_) [[unlikely]] return;
         size_t i = hash_util::murmur64(ref) & INDEX_MASK;
         while (memory_->order_index[i].ref != 0) {
             if (memory_->order_index[i].ref == ref) {

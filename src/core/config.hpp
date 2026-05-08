@@ -9,7 +9,7 @@ namespace config {
 
     // Order book geometry
     inline constexpr size_t PRICE_WINDOW     = 1'000'000;
-    inline constexpr size_t INDEX_SIZE        = 1 << 20;  // 1M slots, ~25% load factor at 4M orders (with chaining)
+    inline constexpr size_t INDEX_SIZE        = 1 << 23;  // 8M slots, ~50% load factor at 4M orders
     inline constexpr size_t INDEX_MASK        = INDEX_SIZE - 1;
 
     // OFI signal parameters

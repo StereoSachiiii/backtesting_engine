@@ -12,7 +12,7 @@ void DoNotOptimize(OrderBookManager& manager) {
 
 int main() {
     struct NoOpStrategy : public Strategy {
-        void on_order_book_update(uint16_t, const OrderBook&) {}
+        void on_order_book_update(uint16_t, const OrderBook&, const OrderBookManager&) {}
         void on_trade(uint16_t, double, uint32_t) {}
         void on_event(const Order&, const OrderBookManager&) {}
 

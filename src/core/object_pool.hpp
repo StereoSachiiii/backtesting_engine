@@ -10,11 +10,13 @@
 
 #ifdef _MSC_VER
 #pragma warning(disable: 4996)  // aligned_storage_t deprecated in C++23 but we using it correctly
-#endif
-
-
-
-/**
+#define pool_aligned_alloc(size, align) _aligned_malloc(size, align)
+#define pool_aligned_free(ptr) _aligned_free(ptr)
+#else
+#include <stdlib.h>
+#define pool_aligned_alloc(size, align) aligned_alloc(align, size)
+#define pool_aligned_free(ptr) free(ptr)
+#endif/**
  * @brief Thread-safe, lock-free pool.
  * Uses a TaggedPtr to prevent the ABA problem in the lock-free stack.
  */
@@ -39,7 +41,7 @@ private:
 
 public:
     ObjectPool() {
-        storage_ = static_cast<Storage*>(_aligned_malloc(sizeof(Storage) * MaxObjects, 64));
+        storage_ = static_cast<Storage*>(pool_aligned_alloc(sizeof(Storage) * MaxObjects, 64));
         if (!storage_) throw std::bad_alloc();
 
         for (size_t i = 0; i < MaxObjects - 1; i++) {
@@ -52,7 +54,7 @@ public:
     };
 
     ~ObjectPool() {
-        _aligned_free(storage_);
+        pool_aligned_free(storage_);
     }
 
     /**
@@ -74,7 +76,7 @@ public:
                 std::memory_order_acquire
             )) {
                 allocated_count_.fetch_add(1, std::memory_order_relaxed);
-                return new (old_head.ptr) T();
+                return new (old_head.ptr) T{};
             }
         }
         return nullptr;
@@ -140,7 +142,7 @@ private:
 
 public:
     SingleThreadedObjectPool() {
-        storage_ = static_cast<Storage*>(_aligned_malloc(sizeof(Storage) * MaxObjects, 64));
+        storage_ = static_cast<Storage*>(pool_aligned_alloc(sizeof(Storage) * MaxObjects, 64));
         if (!storage_) throw std::bad_alloc();
 
         for (size_t i = 0; i < MaxObjects - 1; i++) {
@@ -151,7 +153,7 @@ public:
     }
 
     ~SingleThreadedObjectPool() {
-        _aligned_free(storage_);
+        pool_aligned_free(storage_);
     }
 
     FORCE_INLINE T* allocate() {
@@ -161,7 +163,7 @@ public:
         free_list_head_ = get_next(ptr);
         allocated_count_++;
 
-        return new (ptr) T();
+        return new (ptr) T{};
     }
 
     FORCE_INLINE void deallocate(T* obj) {
