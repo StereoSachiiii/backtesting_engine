@@ -18,7 +18,11 @@
 #include <cstdlib>
 #define FORCE_INLINE inline __attribute__((always_inline))
 #define FAST_SQRT(x) __builtin_sqrt(x)
-#define alloc_zeroed_aligned(size) ([] (size_t s) { void* p = mmap(nullptr, s, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0); return (p == MAP_FAILED) ? nullptr : p; }(size))
+#define alloc_zeroed_aligned(size) ([] (size_t s) { \
+    void* p = mmap(nullptr, s, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_POPULATE, -1, 0); \
+    if (p != MAP_FAILED) madvise(p, s, MADV_HUGEPAGE); \
+    return (p == MAP_FAILED) ? nullptr : p; \
+}(size))
 #define free_zeroed_aligned(ptr, size) munmap(ptr, size)
 #else
 #include <cmath>

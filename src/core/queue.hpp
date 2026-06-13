@@ -76,6 +76,51 @@ class SPSCQueue {
 		//move assignment blocked
 		SPSCQueue& operator=(SPSCQueue&&) = delete;
 
+		/**
+		 * @brief Batch push up to N items with a single tail store.
+		 * @return number of items actually pushed
+		 */
+		template<typename Iter>
+		size_t try_push_batch(Iter begin, Iter end) {
+			size_t current_tail = _tail.load(std::memory_order_relaxed);
+			size_t current_head = _head.load(std::memory_order_acquire);
+			size_t available = (current_head - current_tail - 1) & MASK;
+
+			size_t count = 0;
+			size_t t = current_tail;
+			for (auto it = begin; it != end && count < available; ++it, ++count) {
+				_buffer[t] = *it;
+				t = (t + 1) & MASK;
+			}
+
+			if (count > 0) {
+				_tail.store(t, std::memory_order_release);
+			}
+			return count;
+		}
+
+		/**
+		 * @brief Batch pop up to max_count items with a single head store.
+		 * @return number of items actually popped
+		 */
+		size_t try_pop_batch(T* out, size_t max_count) {
+			size_t current_head = _head.load(std::memory_order_relaxed);
+			size_t current_tail = _tail.load(std::memory_order_acquire);
+			size_t available = (current_tail - current_head) & MASK;
+			size_t to_pop = (available < max_count) ? available : max_count;
+
+			size_t h = current_head;
+			for (size_t i = 0; i < to_pop; ++i) {
+				out[i] = std::move(_buffer[h]);
+				h = (h + 1) & MASK;
+			}
+
+			if (to_pop > 0) {
+				_head.store(h, std::memory_order_release);
+			}
+			return to_pop;
+		}
+
 		
 
 

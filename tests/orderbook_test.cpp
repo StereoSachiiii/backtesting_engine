@@ -4,8 +4,8 @@
 
 void test_orderbook_basic() {
     std::cout << "Starting test_orderbook_basic...\n";
-    ObjectPool<Order, config::MAX_ORDERS> pool;
-    ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
+    SingleThreadedObjectPool<Order, config::MAX_ORDERS> pool;
+    SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
     OrderBook book(pool, lvl_pool);
 
     std::cout << "Adding Bid...\n";
@@ -31,8 +31,8 @@ void test_orderbook_basic() {
 }
 
 void test_orderbook_sorting() {
-    ObjectPool<Order, config::MAX_ORDERS> pool;
-    ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
+    SingleThreadedObjectPool<Order, config::MAX_ORDERS> pool;
+    SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
     OrderBook book(pool, lvl_pool);
 
     book.apply_add(1, 'B', 1000000, 100, 291, 0);
@@ -55,8 +55,8 @@ void test_orderbook_sorting() {
 
 void test_orderbook_price_window() {
     std::cout << "Starting test_orderbook_price_window...\n";
-    ObjectPool<Order, config::MAX_ORDERS> pool;
-    ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
+    SingleThreadedObjectPool<Order, config::MAX_ORDERS> pool;
+    SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> lvl_pool;
     OrderBook book(pool, lvl_pool);
 
     // Initial price sets the window

@@ -76,7 +76,7 @@ public:
                 std::memory_order_acquire
             )) {
                 allocated_count_.fetch_add(1, std::memory_order_relaxed);
-                return new (old_head.ptr) T{};
+                return new (old_head.ptr) T;
             }
         }
         return nullptr;
@@ -163,7 +163,7 @@ public:
         free_list_head_ = get_next(ptr);
         allocated_count_++;
 
-        return new (ptr) T{};
+        return new (ptr) T;
     }
 
     FORCE_INLINE void deallocate(T* obj) {

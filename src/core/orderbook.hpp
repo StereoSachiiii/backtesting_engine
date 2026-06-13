@@ -23,8 +23,8 @@ private:
     OrderBookMemory* memory_ = nullptr;
 
     uint64_t base_price_ = 0;
-    ObjectPool<Order, config::MAX_ORDERS>& order_pool_;
-    ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS>& level_pool_;
+    SingleThreadedObjectPool<Order, config::MAX_ORDERS>& order_pool_;
+    SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS>& level_pool_;
     char market_category_ = ' ';
     uint32_t order_count_ = 0;
 
@@ -39,10 +39,14 @@ private:
     uint64_t total_volume_ = 0;
     uint64_t last_update_ns_ = 0;
     uint64_t out_of_window_drops_ = 0;
+    
+    // Lazy OFI: only recompute when top-of-book actually changes
+    bool ofi_dirty_ = true;
+    uint64_t cached_top_[2] = {0, 0};  // [bid, ask] last computed best prices
 
 public:
 
-    OrderBook(ObjectPool<Order, config::MAX_ORDERS>& order_pool, ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS>& level_pool) 
+    OrderBook(SingleThreadedObjectPool<Order, config::MAX_ORDERS>& order_pool, SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS>& level_pool) 
         : order_pool_(order_pool), level_pool_(level_pool)
     {
         memory_ = static_cast<OrderBookMemory*>(alloc_zeroed_aligned(sizeof(OrderBookMemory)));
@@ -91,6 +95,8 @@ public:
         o->stock_locate = locate;
         o->timestamp_ns = ts_ns;
         o->market_category = market_category_;
+        o->new_order_ref = 0;
+        o->printable = 0;
         o->prev = o->next = nullptr;
         order_count_++;
 
@@ -272,8 +278,23 @@ public:
     FORCE_INLINE void update_ofi() {
         if (!memory_) return;
 
-        double current_mid = mid_price();
-        if (current_mid > 0) last_valid_mid_ = current_mid;
+        // Fast path: check if top-of-book changed (2 bitset traversals)
+        uint64_t cur_bid = best_bid();
+        uint64_t cur_ask = best_ask();
+        
+        if (!ofi_dirty_ && cur_bid == cached_top_[0] && cur_ask == cached_top_[1]) {
+            return;  // Top unchanged → OFI unchanged → skip expensive computation
+        }
+
+        // Slow path: top-of-book changed, do full OFI computation
+        ofi_dirty_ = false;
+        cached_top_[0] = cur_bid;
+        cached_top_[1] = cur_ask;
+
+        double current_mid = (cur_bid > 0 && cur_ask > 0) 
+            ? (double(cur_bid) + double(cur_ask)) / 2.0 
+            : last_valid_mid_;
+        if (cur_bid > 0 && cur_ask > 0) last_valid_mid_ = current_mid;
 
         double total_delta = 0.0;
         
@@ -319,8 +340,8 @@ public:
     FORCE_INLINE double mid_price() const {
         uint64_t bb = best_bid();
         uint64_t ba = best_ask();
-        if (bb == 0 || ba == 0) return last_valid_mid_;
-        return (double(bb) + double(ba)) / 2.0;
+        if (bb > 0 && ba > 0) return (double(bb) + double(ba)) / 2.0;
+        return last_valid_mid_;
     }
 
     FORCE_INLINE double get_ofi() const { return ofi_ema_; }
@@ -392,16 +413,22 @@ private:
     FORCE_INLINE void index_insert_impl(uint64_t ref, Order* o) {
         if (!memory_) [[unlikely]] return;
         size_t h = hash_util::murmur64(ref) & INDEX_MASK;
-        while (memory_->order_index[h].ref != 0) h = (h + 1) & INDEX_MASK;
+        __builtin_prefetch(&memory_->order_index[h], 1, 3);
+        while (memory_->order_index[h].ref != 0) {
+            h = (h + 1) & INDEX_MASK;
+            __builtin_prefetch(&memory_->order_index[(h + 1) & INDEX_MASK], 0, 3);
+        }
         memory_->order_index[h] = { ref, o };
     }
 
     FORCE_INLINE Order* index_find_impl(uint64_t ref) {
         if (!memory_) [[unlikely]] return nullptr;
         size_t h = hash_util::murmur64(ref) & INDEX_MASK;
+        __builtin_prefetch(&memory_->order_index[h], 0, 3);
         while (memory_->order_index[h].ref != 0) {
             if (memory_->order_index[h].ref == ref) return memory_->order_index[h].order;
             h = (h + 1) & INDEX_MASK;
+            __builtin_prefetch(&memory_->order_index[(h + 1) & INDEX_MASK], 0, 3);
         }
         return nullptr;
     }

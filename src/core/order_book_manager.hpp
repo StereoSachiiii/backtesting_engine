@@ -16,13 +16,37 @@ private:
     std::unique_ptr<std::array<OrderBook*, 65536>> books_;
     std::unordered_set<std::string> whitelisted_symbols_;
 
-    ObjectPool<Order, config::MAX_ORDERS> order_pool_;
-    ObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> level_pool_;
+    SingleThreadedObjectPool<Order, config::MAX_ORDERS> order_pool_;
+    SingleThreadedObjectPool<PriceLevel, config::MAX_PRICE_LEVELS> level_pool_;
     uint64_t message_count_ = 0;
+
+    // Dispatch table: one indirect call instead of switch
+    using DispatchFn = void(*)(OrderBook*, const Order&);
+    static inline DispatchFn dispatch_[256] = {};
+
+    static void dispatch_add(OrderBook* b, const Order& o)     { b->apply_add(o.order_ref, o.side, o.price, o.shares, o.stock_locate, o.timestamp_ns); }
+    static void dispatch_execute(OrderBook* b, const Order& o) { b->apply_execute(o.order_ref, o.shares, o.timestamp_ns); }
+    static void dispatch_cancel(OrderBook* b, const Order& o)  { b->apply_cancel(o.order_ref, o.shares, o.timestamp_ns); }
+    static void dispatch_delete(OrderBook* b, const Order& o)  { b->apply_delete(o.order_ref, o.timestamp_ns); }
+    static void dispatch_replace(OrderBook* b, const Order& o) { b->apply_replace(o.order_ref, o.new_order_ref, o.shares, o.price, o.timestamp_ns); }
+    static void dispatch_noop(OrderBook*, const Order&) {}
 
 public:
     OrderBookManager() : books_(std::make_unique<std::array<OrderBook*, 65536>>()) {
         books_->fill(nullptr);
+        if (dispatch_['A'] == nullptr) {
+            dispatch_['A'] = dispatch_add;
+            dispatch_['F'] = dispatch_add;
+            dispatch_['E'] = dispatch_execute;
+            dispatch_['C'] = dispatch_cancel;
+            dispatch_['X'] = dispatch_cancel;
+            dispatch_['D'] = dispatch_delete;
+            dispatch_['U'] = dispatch_replace;
+            dispatch_['R'] = dispatch_noop;
+            dispatch_['S'] = dispatch_noop;
+            dispatch_['P'] = dispatch_noop;
+            dispatch_['Q'] = dispatch_noop;
+        }
     }
 
     uint64_t get_message_count() const { return message_count_; }
@@ -46,7 +70,7 @@ public:
         whitelisted_symbols_.insert(symbol);
     }
     OrderBook* get_or_create_book(uint16_t locate, char market_category) {
-        if (!this || !books_) [[unlikely]] return nullptr;
+        if (!books_) [[unlikely]] return nullptr;
         OrderBook* book = (*books_)[locate];
         if (!book) [[unlikely]] {
             book = static_cast<OrderBook*>(alloc_zeroed_aligned(sizeof(OrderBook)));
@@ -59,7 +83,7 @@ public:
         return book;
     }
 
-    FORCE_INLINE void process_order(const Order& order) {
+    FORCE_INLINE OrderBook* process_order(const Order& order) {
         message_count_++;
         if (order.msg_type == 'R') [[unlikely]] {
             std::string sym(order.symbol, 8);
@@ -69,37 +93,16 @@ public:
                 OrderBook* book = get_or_create_book(order.stock_locate, order.market_category);
                 if (book) book->set_market_category(order.market_category);
             }
-            return;
+            return nullptr;
         }
 
-        if (order.stock_locate >= 65536) return;
+        if (order.stock_locate >= 65536) return nullptr;
         OrderBook* book = get_or_create_book(order.stock_locate, order.market_category);
-        if (!book) return;
+        if (!book) return nullptr;
 
-        switch (order.msg_type) {
-            case 'A':
-            case 'F':
-                book->apply_add(order.order_ref, order.side, order.price, order.shares, order.stock_locate, order.timestamp_ns);
-                break;
-            case 'E':
-                book->apply_execute(order.order_ref, order.shares, order.timestamp_ns);
-                break;
-            case 'C':
-                book->apply_cancel(order.order_ref, order.shares, order.timestamp_ns);
-                break;
-            case 'X':
-                book->apply_cancel(order.order_ref, order.shares, order.timestamp_ns);
-                break;
-            case 'D':
-                book->apply_delete(order.order_ref, order.timestamp_ns);
-                break;
-            case 'U':
-                book->apply_replace(order.order_ref, order.new_order_ref, order.shares, order.price, order.timestamp_ns);
-                break;
-            case 'R':
-                book->set_market_category(order.market_category);
-                break;
-        }
+        DispatchFn fn = dispatch_[static_cast<uint8_t>(order.msg_type)];
+        if (fn) [[likely]] fn(book, order);
+        return book;
     }
 
     Order* get_order(uint16_t locate, uint64_t ref) {

@@ -1,4 +1,4 @@
-#include "src/core/data/itch_file_parser.hpp"
+#include "core/data/itch_file_parser.hpp"
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -66,9 +66,12 @@ int main() {
             ITCHParser::parse(&large_buffer[offset], order);
         }
 
+        uint64_t checksum = 0;
         auto start = std::chrono::steady_clock::now();
         for (size_t i = 0; i < num_messages; i++) {
             ITCHParser::parse(&large_buffer[i * 40], order);
+            checksum += order.order_ref;
+            checksum ^= (order.price << 1);
         }
         auto end = std::chrono::steady_clock::now();
         DoNotOptimize(order);
@@ -81,6 +84,7 @@ int main() {
         std::cout << "Throughput: " << throughput_m << " M msgs/sec\n";
         std::cout << "Data size: " << (40 * num_messages / 1e9) << " GB\n";
         std::cout << "[MORE REALISTIC - Random data, branch prediction misses]\n\n";
+        std::cout << "Checksum: " << checksum << "\n\n";
     }
 
     
@@ -108,11 +112,14 @@ int main() {
             order_book[order.order_ref % 10000] = order;
         }
 
+        uint64_t checksum = 0;
         auto start = std::chrono::steady_clock::now();
         for (size_t i = 0; i < num_messages; i++) {
             ITCHParser::parse(&large_buffer[i * 40], order);
             
             order_book[order.order_ref % 10000] = order;
+            checksum += order.order_ref;
+            checksum ^= (order.price << 1);
         }
         auto end = std::chrono::steady_clock::now();
         DoNotOptimize(order);
@@ -123,7 +130,7 @@ int main() {
 
         std::cout << "Per message: " << ns_per_msg << " ns\n";
         std::cout << "Throughput: " << throughput_m << " M msgs/sec\n";
-       
+        std::cout << "Checksum: " << checksum << "\n";
     }
 
     return 0;

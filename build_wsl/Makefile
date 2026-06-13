@@ -117,108 +117,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named timer_test
+# Target rules for targets named hft_engine
 
 # Build rule for target.
-timer_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 timer_test
-.PHONY : timer_test
+hft_engine: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 hft_engine
+.PHONY : hft_engine
 
 # fast build rule for target.
-timer_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/timer_test.dir/build.make CMakeFiles/timer_test.dir/build
-.PHONY : timer_test/fast
-
-#=============================================================================
-# Target rules for targets named queue_test
-
-# Build rule for target.
-queue_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 queue_test
-.PHONY : queue_test
-
-# fast build rule for target.
-queue_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_test.dir/build.make CMakeFiles/queue_test.dir/build
-.PHONY : queue_test/fast
-
-#=============================================================================
-# Target rules for targets named spmc_queue_test
-
-# Build rule for target.
-spmc_queue_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 spmc_queue_test
-.PHONY : spmc_queue_test
-
-# fast build rule for target.
-spmc_queue_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/spmc_queue_test.dir/build.make CMakeFiles/spmc_queue_test.dir/build
-.PHONY : spmc_queue_test/fast
-
-#=============================================================================
-# Target rules for targets named queue_benchmark
-
-# Build rule for target.
-queue_benchmark: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 queue_benchmark
-.PHONY : queue_benchmark
-
-# fast build rule for target.
-queue_benchmark/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_benchmark.dir/build.make CMakeFiles/queue_benchmark.dir/build
-.PHONY : queue_benchmark/fast
-
-#=============================================================================
-# Target rules for targets named object_pool_test
-
-# Build rule for target.
-object_pool_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 object_pool_test
-.PHONY : object_pool_test
-
-# fast build rule for target.
-object_pool_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/object_pool_test.dir/build.make CMakeFiles/object_pool_test.dir/build
-.PHONY : object_pool_test/fast
-
-#=============================================================================
-# Target rules for targets named test_itch
-
-# Build rule for target.
-test_itch: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_itch
-.PHONY : test_itch
-
-# fast build rule for target.
-test_itch/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_itch.dir/build.make CMakeFiles/test_itch.dir/build
-.PHONY : test_itch/fast
-
-#=============================================================================
-# Target rules for targets named itch_parser_test
-
-# Build rule for target.
-itch_parser_test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 itch_parser_test
-.PHONY : itch_parser_test
-
-# fast build rule for target.
-itch_parser_test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/itch_parser_test.dir/build.make CMakeFiles/itch_parser_test.dir/build
-.PHONY : itch_parser_test/fast
-
-#=============================================================================
-# Target rules for targets named realistic_itch_benchmark
-
-# Build rule for target.
-realistic_itch_benchmark: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 realistic_itch_benchmark
-.PHONY : realistic_itch_benchmark
-
-# fast build rule for target.
-realistic_itch_benchmark/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/realistic_itch_benchmark.dir/build.make CMakeFiles/realistic_itch_benchmark.dir/build
-.PHONY : realistic_itch_benchmark/fast
+hft_engine/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/hft_engine.dir/build.make CMakeFiles/hft_engine.dir/build
+.PHONY : hft_engine/fast
 
 #=============================================================================
 # Target rules for targets named orderbook_test
@@ -247,19 +156,6 @@ bitset_test/fast:
 .PHONY : bitset_test/fast
 
 #=============================================================================
-# Target rules for targets named hft_engine
-
-# Build rule for target.
-hft_engine: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 hft_engine
-.PHONY : hft_engine
-
-# fast build rule for target.
-hft_engine/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/hft_engine.dir/build.make CMakeFiles/hft_engine.dir/build
-.PHONY : hft_engine/fast
-
-#=============================================================================
 # Target rules for targets named strategy_test
 
 # Build rule for target.
@@ -284,6 +180,45 @@ full_system_benchmark: cmake_check_build_system
 full_system_benchmark/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/full_system_benchmark.dir/build.make CMakeFiles/full_system_benchmark.dir/build
 .PHONY : full_system_benchmark/fast
+
+#=============================================================================
+# Target rules for targets named realistic_itch_benchmark
+
+# Build rule for target.
+realistic_itch_benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 realistic_itch_benchmark
+.PHONY : realistic_itch_benchmark
+
+# fast build rule for target.
+realistic_itch_benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/realistic_itch_benchmark.dir/build.make CMakeFiles/realistic_itch_benchmark.dir/build
+.PHONY : realistic_itch_benchmark/fast
+
+#=============================================================================
+# Target rules for targets named queue_benchmark
+
+# Build rule for target.
+queue_benchmark: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 queue_benchmark
+.PHONY : queue_benchmark
+
+# fast build rule for target.
+queue_benchmark/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_benchmark.dir/build.make CMakeFiles/queue_benchmark.dir/build
+.PHONY : queue_benchmark/fast
+
+#=============================================================================
+# Target rules for targets named object_pool_test
+
+# Build rule for target.
+object_pool_test: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 object_pool_test
+.PHONY : object_pool_test
+
+# fast build rule for target.
+object_pool_test/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/object_pool_test.dir/build.make CMakeFiles/object_pool_test.dir/build
+.PHONY : object_pool_test/fast
 
 benchmarks/full_system_benchmark.o: benchmarks/full_system_benchmark.cpp.o
 .PHONY : benchmarks/full_system_benchmark.o
@@ -405,30 +340,6 @@ tests/bitset_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/bitset_test.dir/build.make CMakeFiles/bitset_test.dir/tests/bitset_test.cpp.s
 .PHONY : tests/bitset_test.cpp.s
 
-tests/itch_parser_test.o: tests/itch_parser_test.cpp.o
-.PHONY : tests/itch_parser_test.o
-
-# target to build an object file
-tests/itch_parser_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/itch_parser_test.dir/build.make CMakeFiles/itch_parser_test.dir/tests/itch_parser_test.cpp.o
-.PHONY : tests/itch_parser_test.cpp.o
-
-tests/itch_parser_test.i: tests/itch_parser_test.cpp.i
-.PHONY : tests/itch_parser_test.i
-
-# target to preprocess a source file
-tests/itch_parser_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/itch_parser_test.dir/build.make CMakeFiles/itch_parser_test.dir/tests/itch_parser_test.cpp.i
-.PHONY : tests/itch_parser_test.cpp.i
-
-tests/itch_parser_test.s: tests/itch_parser_test.cpp.s
-.PHONY : tests/itch_parser_test.s
-
-# target to generate assembly for a file
-tests/itch_parser_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/itch_parser_test.dir/build.make CMakeFiles/itch_parser_test.dir/tests/itch_parser_test.cpp.s
-.PHONY : tests/itch_parser_test.cpp.s
-
 tests/object_pool_test.o: tests/object_pool_test.cpp.o
 .PHONY : tests/object_pool_test.o
 
@@ -477,54 +388,6 @@ tests/orderbook_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/orderbook_test.dir/build.make CMakeFiles/orderbook_test.dir/tests/orderbook_test.cpp.s
 .PHONY : tests/orderbook_test.cpp.s
 
-tests/queue_test.o: tests/queue_test.cpp.o
-.PHONY : tests/queue_test.o
-
-# target to build an object file
-tests/queue_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_test.dir/build.make CMakeFiles/queue_test.dir/tests/queue_test.cpp.o
-.PHONY : tests/queue_test.cpp.o
-
-tests/queue_test.i: tests/queue_test.cpp.i
-.PHONY : tests/queue_test.i
-
-# target to preprocess a source file
-tests/queue_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_test.dir/build.make CMakeFiles/queue_test.dir/tests/queue_test.cpp.i
-.PHONY : tests/queue_test.cpp.i
-
-tests/queue_test.s: tests/queue_test.cpp.s
-.PHONY : tests/queue_test.s
-
-# target to generate assembly for a file
-tests/queue_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/queue_test.dir/build.make CMakeFiles/queue_test.dir/tests/queue_test.cpp.s
-.PHONY : tests/queue_test.cpp.s
-
-tests/spmc_queue_test.o: tests/spmc_queue_test.cpp.o
-.PHONY : tests/spmc_queue_test.o
-
-# target to build an object file
-tests/spmc_queue_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/spmc_queue_test.dir/build.make CMakeFiles/spmc_queue_test.dir/tests/spmc_queue_test.cpp.o
-.PHONY : tests/spmc_queue_test.cpp.o
-
-tests/spmc_queue_test.i: tests/spmc_queue_test.cpp.i
-.PHONY : tests/spmc_queue_test.i
-
-# target to preprocess a source file
-tests/spmc_queue_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/spmc_queue_test.dir/build.make CMakeFiles/spmc_queue_test.dir/tests/spmc_queue_test.cpp.i
-.PHONY : tests/spmc_queue_test.cpp.i
-
-tests/spmc_queue_test.s: tests/spmc_queue_test.cpp.s
-.PHONY : tests/spmc_queue_test.s
-
-# target to generate assembly for a file
-tests/spmc_queue_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/spmc_queue_test.dir/build.make CMakeFiles/spmc_queue_test.dir/tests/spmc_queue_test.cpp.s
-.PHONY : tests/spmc_queue_test.cpp.s
-
 tests/strategy_test.o: tests/strategy_test.cpp.o
 .PHONY : tests/strategy_test.o
 
@@ -549,54 +412,6 @@ tests/strategy_test.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/strategy_test.dir/build.make CMakeFiles/strategy_test.dir/tests/strategy_test.cpp.s
 .PHONY : tests/strategy_test.cpp.s
 
-tests/test_itch.o: tests/test_itch.cpp.o
-.PHONY : tests/test_itch.o
-
-# target to build an object file
-tests/test_itch.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_itch.dir/build.make CMakeFiles/test_itch.dir/tests/test_itch.cpp.o
-.PHONY : tests/test_itch.cpp.o
-
-tests/test_itch.i: tests/test_itch.cpp.i
-.PHONY : tests/test_itch.i
-
-# target to preprocess a source file
-tests/test_itch.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_itch.dir/build.make CMakeFiles/test_itch.dir/tests/test_itch.cpp.i
-.PHONY : tests/test_itch.cpp.i
-
-tests/test_itch.s: tests/test_itch.cpp.s
-.PHONY : tests/test_itch.s
-
-# target to generate assembly for a file
-tests/test_itch.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/test_itch.dir/build.make CMakeFiles/test_itch.dir/tests/test_itch.cpp.s
-.PHONY : tests/test_itch.cpp.s
-
-tests/timer_test.o: tests/timer_test.cpp.o
-.PHONY : tests/timer_test.o
-
-# target to build an object file
-tests/timer_test.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/timer_test.dir/build.make CMakeFiles/timer_test.dir/tests/timer_test.cpp.o
-.PHONY : tests/timer_test.cpp.o
-
-tests/timer_test.i: tests/timer_test.cpp.i
-.PHONY : tests/timer_test.i
-
-# target to preprocess a source file
-tests/timer_test.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/timer_test.dir/build.make CMakeFiles/timer_test.dir/tests/timer_test.cpp.i
-.PHONY : tests/timer_test.cpp.i
-
-tests/timer_test.s: tests/timer_test.cpp.s
-.PHONY : tests/timer_test.s
-
-# target to generate assembly for a file
-tests/timer_test.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/timer_test.dir/build.make CMakeFiles/timer_test.dir/tests/timer_test.cpp.s
-.PHONY : tests/timer_test.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -608,16 +423,11 @@ help:
 	@echo "... bitset_test"
 	@echo "... full_system_benchmark"
 	@echo "... hft_engine"
-	@echo "... itch_parser_test"
 	@echo "... object_pool_test"
 	@echo "... orderbook_test"
 	@echo "... queue_benchmark"
-	@echo "... queue_test"
 	@echo "... realistic_itch_benchmark"
-	@echo "... spmc_queue_test"
 	@echo "... strategy_test"
-	@echo "... test_itch"
-	@echo "... timer_test"
 	@echo "... benchmarks/full_system_benchmark.o"
 	@echo "... benchmarks/full_system_benchmark.i"
 	@echo "... benchmarks/full_system_benchmark.s"
@@ -633,30 +443,15 @@ help:
 	@echo "... tests/bitset_test.o"
 	@echo "... tests/bitset_test.i"
 	@echo "... tests/bitset_test.s"
-	@echo "... tests/itch_parser_test.o"
-	@echo "... tests/itch_parser_test.i"
-	@echo "... tests/itch_parser_test.s"
 	@echo "... tests/object_pool_test.o"
 	@echo "... tests/object_pool_test.i"
 	@echo "... tests/object_pool_test.s"
 	@echo "... tests/orderbook_test.o"
 	@echo "... tests/orderbook_test.i"
 	@echo "... tests/orderbook_test.s"
-	@echo "... tests/queue_test.o"
-	@echo "... tests/queue_test.i"
-	@echo "... tests/queue_test.s"
-	@echo "... tests/spmc_queue_test.o"
-	@echo "... tests/spmc_queue_test.i"
-	@echo "... tests/spmc_queue_test.s"
 	@echo "... tests/strategy_test.o"
 	@echo "... tests/strategy_test.i"
 	@echo "... tests/strategy_test.s"
-	@echo "... tests/test_itch.o"
-	@echo "... tests/test_itch.i"
-	@echo "... tests/test_itch.s"
-	@echo "... tests/timer_test.o"
-	@echo "... tests/timer_test.i"
-	@echo "... tests/timer_test.s"
 .PHONY : help
 
 

@@ -128,4 +128,60 @@ int main() {
 	benchmark_latency();
 	benchmark_throughput();
 
+	// Batch benchmark
+	std::cout << "\n=== Batch Throughput Benchmark ===\n";
+	{
+		using BatchQueue = SPSCQueue<int, 65536>;
+		BatchQueue queue;
+		constexpr size_t MESSAGES = 10000000;
+		constexpr size_t BATCH_SIZE = 64;
+		Timer timer;
+
+		std::atomic<bool> producer_done{ false };
+		std::atomic<size_t> messages_consumed{ 0 };
+
+		std::thread producer([&]() {
+			std::vector<int> batch(BATCH_SIZE);
+			size_t sent = 0;
+			while (sent < MESSAGES) {
+				size_t to_send = std::min(BATCH_SIZE, MESSAGES - sent);
+				for (size_t i = 0; i < to_send; i++) batch[i] = static_cast<int>(sent + i);
+				size_t pushed = 0;
+				while (pushed < to_send) {
+					pushed += queue.try_push_batch(batch.begin() + pushed, batch.begin() + to_send);
+				}
+				sent += to_send;
+			}
+			producer_done.store(true);
+		});
+
+		timer.start();
+
+		std::thread consumer([&]() {
+			int buf[BATCH_SIZE];
+			while (messages_consumed.load(std::memory_order_relaxed) < MESSAGES) {
+				size_t got = queue.try_pop_batch(buf, BATCH_SIZE);
+				if (got > 0) {
+					messages_consumed.fetch_add(got, std::memory_order_relaxed);
+				} else if (producer_done.load(std::memory_order_relaxed)) {
+					got = queue.try_pop_batch(buf, BATCH_SIZE);
+					messages_consumed.fetch_add(got, std::memory_order_relaxed);
+					if (got == 0) break;
+				}
+			}
+		});
+
+		producer.join();
+		consumer.join();
+
+		uint64_t elapsed_ns = timer.elapsed_ns();
+		double elapsed_s = static_cast<double>(elapsed_ns) / 1e9;
+		double throughput = static_cast<double>(MESSAGES) / elapsed_s;
+
+		std::cout << "Batch size: " << BATCH_SIZE << "\n";
+		std::cout << "Messages:   " << MESSAGES << "\n";
+		std::cout << "Duration:   " << elapsed_s << "s\n";
+		std::cout << "Throughput: " << (throughput / 1e6) << "M msgs/sec\n";
+		std::cout << "Avg latency:" << (static_cast<double>(elapsed_ns) / static_cast<double>(MESSAGES)) << "ns/msg\n";
+	}
 }

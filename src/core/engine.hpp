@@ -17,6 +17,27 @@ private:
     Order current_order_;
     StrategyType* strategy_;
 
+    // Bitmap: bit N set if char N is a processable message type
+    // Covers: A F E C X D U R S P Q
+    static constexpr bool is_processable(char c) {
+        return c=='A'||c=='F'||c=='E'||c=='C'||c=='X'||c=='D'||c=='U'||c=='R'||c=='S'||c=='P'||c=='Q';
+    }
+    static constexpr bool is_trade(char c) { return c=='P'||c=='E'; }
+
+    // 256-bit lookup: processable_map_[type] is branch-free
+    static constexpr auto make_map() {
+        std::array<uint8_t, 256> m{};
+        for (int i = 0; i < 256; i++) m[i] = is_processable(static_cast<char>(i)) ? 1 : 0;
+        return m;
+    }
+    static constexpr auto make_trade_map() {
+        std::array<uint8_t, 256> m{};
+        for (int i = 0; i < 256; i++) m[i] = is_trade(static_cast<char>(i)) ? 1 : 0;
+        return m;
+    }
+    static constexpr auto processable_map_ = make_map();
+    static constexpr auto trade_map_ = make_trade_map();
+
 public:
     HFTEngine(StrategyType& strategy) : strategy_(&strategy) {
         ITCHParser::init();
@@ -26,25 +47,18 @@ public:
 
    
     FORCE_INLINE void process_message(const uint8_t* data) {
-        if (!this || !strategy_) [[unlikely]] return;
+        if (!strategy_) [[unlikely]] return;
         if (!ITCHParser::parse(data, current_order_)) return;
 
         strategy_->on_event(current_order_, manager_);
 
-        if (current_order_.msg_type == 'A' || current_order_.msg_type == 'F' || 
-            current_order_.msg_type == 'E' || current_order_.msg_type == 'C' || 
-            current_order_.msg_type == 'X' || current_order_.msg_type == 'D' ||
-            current_order_.msg_type == 'U' || current_order_.msg_type == 'R' ||
-            current_order_.msg_type == 'S' || current_order_.msg_type == 'P' ||
-            current_order_.msg_type == 'Q') {
-            
-            manager_.process_order(current_order_);
-            
-            OrderBook* book = manager_.get_book(current_order_.stock_locate);
+        uint8_t type = static_cast<uint8_t>(current_order_.msg_type);
+        if (processable_map_[type]) {
+            OrderBook* book = manager_.process_order(current_order_);
             if (book) {
                 strategy_->on_order_book_update(current_order_.stock_locate, *book, manager_);
                 
-                if (current_order_.msg_type == 'P' || current_order_.msg_type == 'E') {
+                if (trade_map_[type]) {
                     strategy_->on_trade(current_order_.stock_locate, static_cast<double>(current_order_.price), current_order_.shares);
                 }
             }
